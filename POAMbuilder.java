@@ -53,7 +53,7 @@ import net.sourceforge.jdatepicker.JDatePicker;
  * POAM Builder, for SCAP/Retina CSV file parsing to PMMI POAM format
  * 
  * @author rogerssa
- * @version 0.9 BETA
+ * @version 2.9 BETA
  * 
  * 
  * @Info
