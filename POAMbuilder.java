@@ -53,7 +53,7 @@ import net.sourceforge.jdatepicker.JDatePicker;
  * POAM Builder, for SCAP/Retina CSV file parsing to PMMI POAM format
  * 
  * @author rogerssa
- * @version 2.9 BETA
+ * @version 0.9 BETA
  * 
  * 
  * @Info
@@ -322,7 +322,6 @@ public class POAMbuilder extends JPanel
      */
     public void parser(File[] files) {
     	try {
-    		fillColumns();
     		setDate();
     		String poamDescriptorString = poamDescriptorTextbox.getText();           
     		for(File file : files) {
@@ -402,9 +401,9 @@ public class POAMbuilder extends JPanel
 			  rarline = rarline + entry.getCat() + split;
 			  rarline = rarline + (String) comboBoxImpact.getSelectedItem() + split;
 			  rarline = rarline + (String) comboBoxLikelihood.getSelectedItem() + split;
-			  rarline = rarline + entry.getFixText() + split;
-			  rarline = rarline + split + split + status;
-			  rarline = rarline + split + entry.getComment();
+			  rarline = rarline + split + split;
+			  rarline = rarline + split + status;
+			  rarline = rarline + split + entry.getFindingDetail();
 			  rarline = rarline + split + entry.getSystemName();
 			  rarline = rarline + split + entry.getCheckContent();
 			  rarline = rarline + split + entry.getFixText();
@@ -689,7 +688,7 @@ public class POAMbuilder extends JPanel
 					//String cve = nextLine[columnLocations[4]];
 					String solution = nextLine[columnLocations[5]];
 					String description = nextLine[columnLocations[6]];
-					String riskFactor = nextLine[columnLocations[7]];
+					//String riskFactor = nextLine[columnLocations[7]];
 					String dnsName =  nextLine[columnLocations[8]];
 					String netName = nextLine[columnLocations[9]];
 					String ipName = nextLine[columnLocations[10]];
@@ -709,9 +708,7 @@ public class POAMbuilder extends JPanel
 					
 					String sev = returnCAT(severity.toLowerCase());
 					fe.setCat(sev);
-					String ris = returnCAT(riskFactor.toLowerCase());
-					fe.setLevel(ris);
-					
+					fe.setLevel(sev);
 					fe.setScheduledcompletiondate(returnDate(sev));
 					
 					String systemName = "";
@@ -747,7 +744,7 @@ public class POAMbuilder extends JPanel
     			JOptionPane.showMessageDialog(this, "INPUT FILE FORMAT ERROR AT " + fe.getFindingID() + "\nDO NOT TRUST RESULTS", "STIG ERR OR", JOptionPane.ERROR_MESSAGE ) ;
     		} else {
     			JOptionPane.showMessageDialog(this, "INPUT FILE FORMAT ERROR, make sure you are using the ACAS Detailed Vulnerability Export and you have \''info\" filtered out! ",	"ACAS ERROR", JOptionPane.ERROR_MESSAGE ) ;
-    		}//if(pe.getFindingID() != null && !pe.ge tFinding ID().trim() . equals(" ")){ 823	e.printStackTrace();
+    		}//if(pe.getFindingID() != null && !pe.ge tFinding ID().trim() . equals(" ")){ 
     		
 			e.printStackTrace();
 		}
@@ -1092,7 +1089,8 @@ public class POAMbuilder extends JPanel
      * capToRmf - map of DIACAP controls to RMF controls
      * cciToRmf - map of CCI numbers to RMF controls
      * */
-    private void fillColumns() {
+    //private void fillColumns() {
+    static {
 		scapColumns.add("Rule Title");//0
 		scapColumns.add("Discussion");//1
 		scapColumns.add("Severity");//2
