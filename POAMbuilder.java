@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -69,6 +70,10 @@ public class POAMbuilder extends JPanel
 	private JButton clearButton;
 	private JFormattedTextField poamDescriptorTextbox;
 	private JFormattedTextField dateOfScanTextbox;
+	private JCheckBox poamCheckBox;
+	private JCheckBox rarCheckBox;
+	private JCheckBox controlsCheckBox;
+	private JCheckBox countsCheckBox;
 	private JTextArea filesSelected;
 	private JFileChooser fileChooser;
 	private JDatePicker datePicker;
@@ -95,6 +100,8 @@ public class POAMbuilder extends JPanel
 	private static List<String>	acasColumns = new ArrayList<String>();
 	private static Map<String, String> capToRmf = new HashMap<String, String>();
 	private static Map<String, String> cciToRmf = new HashMap<String, String>();
+	private List<String> stigNames = new ArrayList<String>();
+	private List<String> iaControls = new ArrayList<String>();
 	//private static final String poamFirstLine = "Weakness#CAT#IA Control and Impact Code#POC#Resources Required#Scheduled Completion Date"
 	//		+ "#Milestones with Completion Dates#Milestone Changes#Source Identifying Weakness#Status#Comments#System"; //#Severity
 	//private static final String newPOAMFirstLine = "Vuln ID#STIG ID#Name#Description#Raw Risk#IA Control#Source Identifying Weakness"
@@ -188,6 +195,19 @@ public class POAMbuilder extends JPanel
 	        comboBoxLikelihood = new JComboBox<String>(likelihoods);
 	        comboBoxLikelihood.setToolTipText("Select base RAR Likelihood");
 	        
+	        poamCheckBox = new JCheckBox("POAM");
+	        poamCheckBox.setSelected(true);
+	        
+	        rarCheckBox = new JCheckBox("RAR");
+	        rarCheckBox.setSelected(true);
+	        
+	        controlsCheckBox = new JCheckBox("Controls");
+	        controlsCheckBox.setSelected(false);
+	        
+	        countsCheckBox = new JCheckBox("Counts");
+	        countsCheckBox.setSelected(false);
+
+	        
 	        JPanel inputPanel = new JPanel(); //use FlowLayout
 	        //inputPanel.add(selectButton);
 	        inputPanel.add(poamLabel);
@@ -208,6 +228,12 @@ public class POAMbuilder extends JPanel
             JPanel forthinputPanel = new JPanel();
             forthinputPanel.add(selectButton);
             
+            JPanel fifthinputpanel = new JPanel();
+            fifthinputpanel.add(poamCheckBox);
+            fifthinputpanel.add(rarCheckBox);
+            fifthinputpanel.add(controlsCheckBox);
+            fifthinputpanel.add(countsCheckBox);
+            
 	        JPanel executePanel = new JPanel();
 	        executeButton = new JButton("Execute");
 	        executeButton.addActionListener(this);
@@ -217,10 +243,11 @@ public class POAMbuilder extends JPanel
 	        //executePanel.add(clearButton);
 	        	
 	        //build panel
-	        JPanel rootPanel = new JPanel(new GridLayout(4, 1));
+	        JPanel rootPanel = new JPanel(new GridLayout(5, 1));
 		    rootPanel.add(inputPanel);
 		    rootPanel.add(secoundaryInputPanel);  
 		    rootPanel.add(thirdInputPanel);
+		    rootPanel.add(fifthinputpanel);
 		    rootPanel.add(forthinputPanel);
 		    
 	        //add the buttons and the log to this panel.
@@ -352,77 +379,130 @@ public class POAMbuilder extends JPanel
         		    cklParser(document);
             	}//if(fileName.endsWith(".ckl")){
             }//end for(File file : files) {
+    		
+    		if(poamCheckBox.isSelected()){
+    		
+	            CSVWriter poamWriter = new CSVWriter(new FileWriter(poamDescriptorString + "_POAM.csv"), ',');
+	            poamWriter.writeNext(emassPOAMFirstLine.split(split));
+	            
+	            //this part takes the entryMap and puts it to paper!
+	            int cnt = 1;
+				Iterator<Entry<String, FindingEntry>> entries = entryMap.entrySet().iterator();
+				while (entries.hasNext()) {
+				  Entry<String, FindingEntry> thisEntry = (Entry<String, FindingEntry>) entries.next();
+				  FindingEntry entry = (FindingEntry) thisEntry.getValue();
+				 
+				  String poamline;  // = id + value.getFindingID();
+				  poamline = cnt + split;
+				  poamline = poamline + entry.getFindingID() + " : "+ entry.getDescription();
+				  poamline = poamline + split + entry.getControl();
+				  poamline = poamline + split + poc;
+				  poamline = poamline + split + entry.getFindingID();
+				  poamline = poamline + split + entry.getCat();
+				  poamline = poamline + split;
+				  poamline = poamline + split + entry.getLevel();
+				  poamline = poamline + split + resourcesrequired;
+				  poamline = poamline + split + entry.getScheduledcompletiondate();
+				  poamline = poamline + split + entry.getScheduledcompletiondate();
+				  poamline = poamline + split + entry.getFindingSource();
+				  poamline = poamline + split + status;
+				  poamline = poamline + split + entry.getFindingDetail();
+				  poamline = poamline + split + entry.getSystemName();
+				  poamline = poamline + split + entry.getCheckContent();
+				  poamline = poamline + split + entry.getFixText();
+				  
+				  poamline = poamline.replaceAll("\"", " ");
+				  poamline = poamline.replaceAll(",", " ");
+	
+				  poamWriter.writeNext(poamline.split(split));
+				  cnt++;
+				}
             
-            CSVWriter poamWriter = new CSVWriter(new FileWriter(poamDescriptorString + "_POAM.csv"), ',');
-            CSVWriter rarWriter = new CSVWriter(new FileWriter(poamDescriptorString + "_RAR.csv"), ',');
+				poamWriter.close();
+	            JOptionPane.showMessageDialog(this, "POAM Created", "Success", JOptionPane.PLAIN_MESSAGE);
+    		}
             
-            //put first line of RAR headers in
-            rarWriter.writeNext(rarFirstLine.split(split));
+    		if(rarCheckBox.isSelected()){
+	            CSVWriter rarWriter = new CSVWriter(new FileWriter(poamDescriptorString + "_RAR.csv"), ',');	            
+	            //put first line of RAR headers in
+	            rarWriter.writeNext(rarFirstLine.split(split));
 
-            //put first line of POAM headers in
-            poamWriter.writeNext(emassPOAMFirstLine.split(split));
-           
-            //this part takes the entryMap and puts it to paper!
-            int cnt = 1;
-			Iterator<Entry<String, FindingEntry>> entries = entryMap.entrySet().iterator();
-			while (entries.hasNext()) {
-			  Entry<String, FindingEntry> thisEntry = (Entry<String, FindingEntry>) entries.next();
-			  FindingEntry entry = (FindingEntry) thisEntry.getValue();
-			 
-			  String poamline;  // = id + value.getFindingID();
-			  poamline = cnt + split;
-			  poamline = poamline + entry.getFindingID() + " : "+ entry.getDescription();
-			  poamline = poamline + split + entry.getControl();
-			  poamline = poamline + split + poc;
-			  poamline = poamline + split + entry.getFindingID();
-			  poamline = poamline + split + entry.getCat();
-			  poamline = poamline + split;
-			  poamline = poamline + split + entry.getLevel();
-			  poamline = poamline + split + resourcesrequired;
-			  poamline = poamline + split + entry.getScheduledcompletiondate();
-			  poamline = poamline + split + entry.getScheduledcompletiondate();
-			  poamline = poamline + split + entry.getFindingSource();
-			  poamline = poamline + split + status;
-			  poamline = poamline + split + entry.getFindingDetail();
-			  poamline = poamline + split + entry.getSystemName();
-			  poamline = poamline + split + entry.getCheckContent();
-			  poamline = poamline + split + entry.getFixText();
-			  
-			  poamline = poamline.replaceAll("\"", " ");
-			  poamline = poamline.replaceAll(",", " ");
-
-			  poamWriter.writeNext(poamline.split(split));
-			  
-			  String rarline = "";  // = id + value.getFindingID();
-			  rarline = rarline + entry.getControl() + split;
-			  rarline = rarline + entry.getFindingSource() + split;
-			  rarline = rarline + entry.getFindingID() + split;
-			  rarline = rarline + entry.getFindingID() + " : " + entry.getDescription() + split;
-			  rarline = rarline + entry.getCat() + split;
-			  rarline = rarline + (String) comboBoxImpact.getSelectedItem() + split;
-			  rarline = rarline + (String) comboBoxLikelihood.getSelectedItem() + split;
-			  rarline = rarline + split + split;
-			  rarline = rarline + split + status;
-			  rarline = rarline + split + entry.getFindingDetail();
-			  rarline = rarline + split + entry.getSystemName();
-			  rarline = rarline + split + entry.getCheckContent();
-			  rarline = rarline + split + entry.getFixText();
-			  
-			  rarline = rarline.replaceAll("\"", " ");
-			  rarline = rarline.replaceAll(",", " ");
-
-			  rarWriter.writeNext(rarline.split(split));
-			  cnt++;
+				Iterator<Entry<String, FindingEntry>> entries = entryMap.entrySet().iterator();
+				while (entries.hasNext()) {
+				  Entry<String, FindingEntry> thisEntry = (Entry<String, FindingEntry>) entries.next();
+				  FindingEntry entry = (FindingEntry) thisEntry.getValue();
+	          
+				  String rarline = "";  // = id + value.getFindingID();
+				  rarline = rarline + entry.getControl() + split;
+				  rarline = rarline + entry.getFindingSource() + split;
+				  rarline = rarline + entry.getFindingID() + split;
+				  rarline = rarline + entry.getFindingID() + " : " + entry.getDescription() + split;
+				  rarline = rarline + entry.getCat() + split;
+				  rarline = rarline + (String) comboBoxImpact.getSelectedItem() + split;
+				  rarline = rarline + (String) comboBoxLikelihood.getSelectedItem() + split;
+				  rarline = rarline + split + split;
+				  rarline = rarline + split + status;
+				  rarline = rarline + split + entry.getFindingDetail();
+				  rarline = rarline + split + entry.getSystemName();
+				  rarline = rarline + split + entry.getCheckContent();
+				  rarline = rarline + split + entry.getFixText();
+				  
+				  rarline = rarline.replaceAll("\"", " ");
+				  rarline = rarline.replaceAll(",", " ");
+				  
+				  rarWriter.writeNext(rarline.split(split));
+				}
+			 rarWriter.close();
+	         JOptionPane.showMessageDialog(this, "RAR Created", "Success", JOptionPane.PLAIN_MESSAGE);
+		            
+    		}
+    		
+    		if(controlsCheckBox.isSelected()){
+				Iterator<Entry<String, FindingEntry>> entries = entryMap.entrySet().iterator();
+				while (entries.hasNext()) {
+				  Entry<String, FindingEntry> thisEntry = (Entry<String, FindingEntry>) entries.next();
+				  FindingEntry entry = (FindingEntry) thisEntry.getValue();
+    		
+				  String iac = entry.getControl().trim();
+				  String[] iacarray = iac.split(newline);
+				  for(int n = 0; n < iacarray.length; n++){
+					  if(!iaControls.contains(iacarray[n].trim())){
+						  iaControls.add(iacarray[n].trim());
+					  }
+				  }
+				}
+				
+				CSVWriter controlsWriter = new CSVWriter(new FileWriter(poamDescriptorString + "_CONTROLS.csv"), ',');
+	            for (int c = 0; c < iaControls.size(); c++){
+	            	//System.out.println(iaControls.get(c));
+	            	controlsWriter.writeNext(iaControls.get(c).split(split));
+	            }
+	            controlsWriter.close();
+	            JOptionPane.showMessageDialog(this, "Contorls List Created", "Success", JOptionPane.PLAIN_MESSAGE);
 			} // end while (entries.hasNext()) {
 			
-			poamWriter.close();
-            JOptionPane.showMessageDialog(this, "POAM Created", "Success", JOptionPane.PLAIN_MESSAGE);
-		    
-            rarWriter.close();
-            JOptionPane.showMessageDialog(this, "RAR Created", "Success", JOptionPane.PLAIN_MESSAGE);
-		    
+			
+    		if(countsCheckBox.isSelected()){
+ 				Iterator<Entry<String, FindingEntry>> entries = entryMap.entrySet().iterator();
+ 				while (entries.hasNext()) {
+ 					Entry<String, FindingEntry> thisEntry = (Entry<String, FindingEntry>) entries.next();
+ 					FindingEntry entry = (FindingEntry) thisEntry.getValue();
+	    			if(!stigNames.contains(entry.getFindingSource())){
+	    				stigNames.add(entry.getFindingSource());
+	   			  	}
+ 				}
+ 				
+	            CSVWriter stigWriter = new CSVWriter(new FileWriter(poamDescriptorString + "_STIG.csv"), ',');
+	            for (int c = 0; c < stigNames.size(); c++){
+	            	stigWriter.writeNext(stigNames.get(c).split(split));
+	            }
+	            stigWriter.close();
+	            JOptionPane.showMessageDialog(this, "STIGs List Created", "Success", JOptionPane.PLAIN_MESSAGE);
+ 				
+    		}
+  
 		} catch (Exception e) {
-			JOptionPane.showMessageDialog(this, "POAM or RAR OUTFILE ERROR" + newline + "DO NOT TRUST RESULTS", "APP ERROR", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "OUTFILE ERROR" + newline + "DO NOT TRUST RESULTS", "APP ERROR", JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
 		}
     	java.lang.System.exit(2);
@@ -434,8 +514,8 @@ public class POAMbuilder extends JPanel
     	//RAREntry re = new RAREntry();
     	try {
     		
-    	    XPath xpath = XPathFactory.newInstance().newXPath();
-    	    
+    		
+    	    XPath xpath = XPathFactory.newInstance().newXPath();    		
     	    //get host information
 			Node hostNameNode = (Node) xpath.evaluate("CHECKLIST/ASSET/HOST_NAME", document, XPathConstants.NODE);
 			//Node hostIPNode = (Node) xpath.evaluate("CHECKLIST/ASSET/HOST_IP", document, XPathConstants.NODE);
@@ -521,7 +601,7 @@ public class POAMbuilder extends JPanel
 		
 	    		}//end if (vulnStatus.getTextContent().equals("Open")){
 			}	// end for (int cnt = 1; cnt <= nl.getLength(); cnt++) {		
-			
+
 		} catch (XPathExpressionException e) {
 			if(fe.getFindingID()!= null && !fe.getFindingID().trim().equals("")){
 				JOptionPane.showMessageDialog(this, "INPUT FILE ERROR AT " + fe.getFindingID() + "\nDO NOT TRUST RESULTS", "CKL ERROR", JOptionPane. ERROR_MESSAGE);
@@ -889,7 +969,58 @@ public class POAMbuilder extends JPanel
 			e.printStackTrace();
 		}
     }//private void scapEntry(CSVReader reader, String systemName){
-        
+  
+    public class poamCounts {
+    	private String poamName;
+    	private int cat1;
+    	private int cat2;
+    	private int cat3;
+    	private int ovrcat1;
+    	private int ovrcat2;
+    	private int ovrcat3;
+		public int getOvrcat1() {
+			return ovrcat1;
+		}
+		public void setOvrcat1(int ovrcat1) {
+			this.ovrcat1 = ovrcat1;
+		}
+		public int getOvrcat2() {
+			return ovrcat2;
+		}
+		public void setOvrcat2(int ovrcat2) {
+			this.ovrcat2 = ovrcat2;
+		}
+		public int getOvrcat3() {
+			return ovrcat3;
+		}
+		public void setOvrcat3(int ovrcat3) {
+			this.ovrcat3 = ovrcat3;
+		}
+		public String getPoamName() {
+			return poamName;
+		}
+		public void setPoamName(String poamName) {
+			this.poamName = poamName;
+		}
+		public int getCat1() {
+			return cat1;
+		}
+		public void setCat1(int cat1) {
+			this.cat1 = cat1;
+		}
+		public int getCat2() {
+			return cat2;
+		}
+		public void setCat2(int cat2) {
+			this.cat2 = cat2;
+		}
+		public int getCat3() {
+			return cat3;
+		}
+		public void setCat3(int cat3) {
+			this.cat3 = cat3;
+		}
+    }
     
     /**
      * POAMEntry Java Object
@@ -4283,4 +4414,6 @@ public class POAMbuilder extends JPanel
 		cciToRmf.put("CCI-003596", "UL-2 d");
 		cciToRmf.put("CCI-003597", "UL-2 d");
 	}//private void fillColumns() {
+
+
 }//end class body
