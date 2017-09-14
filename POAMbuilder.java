@@ -1236,7 +1236,7 @@ public class POAMbuilder extends JPanel
 		scapColumns.add("HostName");
 		scapColumns.add("IPAddress");
 		scapColumns.add("MACAddress");
-		scapColumns.add("Vuln Id");
+		scapColumns.add("Vuln ID");
 		scapColumns.add("Check Content");
 
 		acasColumns.add("Plugin Name"); //0 X
