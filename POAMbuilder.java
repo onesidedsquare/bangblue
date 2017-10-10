@@ -28,7 +28,6 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -41,7 +40,9 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -87,7 +88,7 @@ public class POAMbuilder extends JPanel
 	
 	//These are used in building the new POAM
 	private static final String newline = "\n";
-	private static final String split = "#";
+	private static final String split = "###";
 
 	//These 2 strings will always be in the outputs, these are to test to see which one is which
 	//private static final String retinaHeaderTest = "NetBIOSName";
@@ -107,12 +108,12 @@ public class POAMbuilder extends JPanel
 	//private static final String newPOAMFirstLine = "Vuln ID#STIG ID#Name#Description#Raw Risk#IA Control#Source Identifying Weakness"
 	//		+ "#Technology Area#Program#Affected System#IP Address#Finding Details/Tool Results#Fix Procedures (From Tool)#Point of Contact#Engineer Status#Engineer Comments"
 	//		+ "#Remediation Steps#Mitigation#CAT (Residual Risk)#Status (Final/Official)#Validator Comments#Documentation Status#Scan Date#Date Last Updated#IAU";
-	private static final String emassPOAMFirstLine = "#Control Vulnerablity Description#Security Control Number#Office Organization#Security Checks#Raw Security Value#Mitigation"
-			+ "#Severity Value#Resources Required#Scheduled Completion Date#Milestone with Completion Date#Source Idenifitying Weakness#Status#Comments#Affected Systems#Check Content"
-			+ "#Fix Text";
-	private static final String rarFirstLine = "Identifier Applicable Security Control (1)#Source of Discovery or Test Tool Name (2)#Test ID or Threat IDs (3)#Description of Vulnerability/Weakness (4)"
-			+ "#Raw Risk (CAT I, II, III) (5)#Impact (6)#Likelihood (7)#Mitigation Description (10)#Remediation Description (11)#Residual Risk/Risk Exposure (12)#Status (13)"
-			+ "#Comment (14)#Devices Affected (15)#Check Content#Fix Text";
+	private static final String emassPOAMFirstLine = "###Control Vulnerablity Description###Security Control Number###Office Organization###Security Checks###Raw Security Value###Mitigation"
+			+ "###Severity Value###Resources Required###Scheduled Completion Date###Milestone with Completion Date###Milestone Changes###Source Idenifitying Weakness###Status###Comments###Affected Systems###Check Content"
+			+ "###Fix Text";
+	private static final String rarFirstLine = "Identifier Applicable Security Control (1)###Source of Discovery or Test Tool Name (2)###Test ID or Threat IDs (3)###Description of Vulnerability/Weakness (4)"
+			+ "###Raw Risk (CAT I, II, III) (5)###Impact (6)###Likelihood (7)###Mitigation Description (10)###Remediation Description (11)###Residual Risk/Risk Exposure (12)###Status (13)"
+			+ "###Comment (14)###Devices Affected (15)###Check Content###Fix Text";
 	//hardcodedgoodness aww yis
 
 	private static final String status = "OnGoing";
@@ -169,8 +170,10 @@ public class POAMbuilder extends JPanel
 	        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 	        FileNameExtensionFilter csvfilter = new FileNameExtensionFilter("CSV Files", "csv");
 	        FileNameExtensionFilter xmlFilter = new FileNameExtensionFilter("CKL Files", "ckl");
+	        FileNameExtensionFilter nessusFilter = new FileNameExtensionFilter("NESSUS Files", "nessus");
 	        fileChooser.setFileFilter(xmlFilter);
 	        fileChooser.setFileFilter(csvfilter);
+	        fileChooser.setFileFilter(nessusFilter);
 	
 	        //button that activates the file selection option
 	        selectButton = new JButton("Select File(s)");
@@ -378,6 +381,12 @@ public class POAMbuilder extends JPanel
         		    Document document = docBuilder.parse(file);
         		    cklParser(document);
             	}//if(fileName.endsWith(".ckl")){
+            	if(fileName.endsWith(".nessus")) {
+            		DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+        		    DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+        		    Document document = docBuilder.parse(file);
+        		    nessusParser(document);
+            	}
             }//end for(File file : files) {
     		
     		if(poamCheckBox.isSelected()){
@@ -404,6 +413,7 @@ public class POAMbuilder extends JPanel
 				  poamline = poamline + split + resourcesrequired;
 				  poamline = poamline + split + entry.getScheduledcompletiondate();
 				  poamline = poamline + split + entry.getScheduledcompletiondate();
+				  poamline = poamline + split;
 				  poamline = poamline + split + entry.getFindingSource();
 				  poamline = poamline + split + status;
 				  poamline = poamline + split + entry.getFindingDetail();
@@ -507,8 +517,107 @@ public class POAMbuilder extends JPanel
 		}
     	java.lang.System.exit(2);
     } // end SCAPParser
-    
+    /**
+     * This parses the ####.nessus files that ACAS produces post scan
+     * 
+     * 
+     * @param document
+     */
+    private void nessusParser(Document document) {
+    	FindingEntry fe = new FindingEntry();
+    	try {
+    		XPath xpath = XPathFactory.newInstance().newXPath();
+    		NodeList reportHostNodeList = document.getElementsByTagName("ReportHost");
+    		//System.out.println("count: " + nl.getLength());	
 
+    		for (int cnt = 0; cnt < reportHostNodeList.getLength(); cnt++) { 
+    			Node reportHostNode = (Node) reportHostNodeList.item(cnt);
+    			System.out.println("element :" + reportHostNode.getNodeName());
+    			
+    			String hostIP = (String) xpath.evaluate("HostProperties/tag[@name='host-ip']/text()", reportHostNode, XPathConstants.STRING);
+    			String hostfqdn = (String) xpath.evaluate("HostProperties/tag[@name='host-fqdn']/text()", reportHostNode, XPathConstants.STRING);
+
+    			System.out.println("hostIP: "+ hostIP);
+    			System.out.println("hostfqdn: "+ hostfqdn);
+    			
+    			NodeList reportItemNodeList = (NodeList) xpath.evaluate("ReportItem", reportHostNode, XPathConstants.NODESET);
+    			
+    			for (int num = 0; num < reportItemNodeList.getLength(); num++) { 
+    				Node reportItemNode = (Node) reportItemNodeList.item(num);
+    				String riskfactor = (String) xpath.evaluate("risk_factor/text()", reportItemNode, XPathConstants.STRING);
+    				System.out.println("riskfactor "+ riskfactor);
+    				
+    				//if(riskfactor == null || riskfactor.trim().equals("")){
+        			//	break;
+        			//}
+    				
+    				if(!riskfactor.equalsIgnoreCase("none")){
+    					fe = new FindingEntry();
+	        			//String synopsis = (String) xpath.evaluate("synopsis/text()", reportItemNode, XPathConstants.STRING);
+	        			String solution = (String) xpath.evaluate("solution/text()", reportItemNode, XPathConstants.STRING);
+						String findingdetail = ((String) xpath.evaluate("plugin_output/text()", reportItemNode, XPathConstants.STRING)).trim();
+						String description = (String) xpath.evaluate("description/text()", reportItemNode, XPathConstants.STRING);
+						
+						String catnum = returnCAT(riskfactor);
+
+						String pluginID = "";
+						String pluginName = "";
+						NamedNodeMap attrs = reportItemNode.getAttributes();
+					    for(int i = 0 ; i<attrs.getLength() ; i++) {
+					      Attr attribute = (Attr)attrs.item(i);   
+					      //looping is bullshit but whatever
+					      if(attribute.getName().equalsIgnoreCase("pluginID")) {
+					          pluginID = attribute.getValue();
+					      }
+					      if(attribute.getName().equalsIgnoreCase("pluginName")){
+					    	  pluginName = attribute.getValue();
+					      }
+					    }
+					      
+						System.out.println("pluginID "+ pluginID);
+						
+						fe.setFindingID(pluginID);
+						fe.setDescription(pluginName + newline + description);
+						fe.setFindingDetail(findingdetail);
+						fe.setSystemName(hostIP);
+						
+						fe.setCat(catnum);
+						fe.setLevel(catnum);
+						fe.setControl("VIVM-1" + newline + "CM-6"); 
+						fe.setFindingSource("ACAS - Nessus Scanner");
+						fe.setScheduledcompletiondate(returnDate(catnum));
+						fe.setFixText(solution);
+						fe.setCheckContent("");
+						
+    					String key = pluginID + "ACAS"; 
+    		    		
+    		    		if(entryMap.get(key) == null){ // && entryMap.get(key).equals("")
+    						entryMap.put(key, fe);
+    					} else {
+    						FindingEntry dupePE = entryMap.get(key);
+    						if(!dupePE.getSystemName().contains(hostIP)){
+    							dupePE.setSystemName(dupePE.getSystemName() + newline + hostIP);
+    							entryMap.remove(key);
+    							entryMap.put(key, dupePE);
+    						}//ACAS will have multiple findings for the same box just because it's a different port, 
+    						//no need to double/triple up on same finding
+    					}//if(entryMap.get(key) == null){		    		
+    				}//if(!riskfactor.equalsIgnoreCase("none")){
+    			}   			
+    		}	
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    		if(fe.getFindingID() !=  null && !fe.getFindingID().trim().equals("")){ 
+    			JOptionPane.showMessageDialog(this, "INPUT FILE FORMAT ERROR AT " + fe.getFindingID() + "\nDO NOT TRUST RESULTS", "STIG ERR OR", JOptionPane.ERROR_MESSAGE ) ;
+    		}//if(pe.getFindingID() != null && !pe.ge tFinding ID().trim() . equals(" ")){ 
+    		
+		}
+    }
+/**
+ * This parses STIG viewers CKLs
+ * 
+ * @param document
+ */
     private void cklParser(Document document) {
     	FindingEntry fe = new FindingEntry();
     	//RAREntry re = new RAREntry();
@@ -517,55 +626,54 @@ public class POAMbuilder extends JPanel
     		
     	    XPath xpath = XPathFactory.newInstance().newXPath();    		
     	    //get host information
-			Node hostNameNode = (Node) xpath.evaluate("CHECKLIST/ASSET/HOST_NAME", document, XPathConstants.NODE);
-			//Node hostIPNode = (Node) xpath.evaluate("CHECKLIST/ASSET/HOST_IP", document, XPathConstants.NODE);
-			//Node hostMACNode = (Node) xpath.evaluate("CHECKLIST/ASSET/HOST_MAC", document, XPathConstants.NODE);
-			//Node hostFQDNNode = (Node) xpath.evaluate("CHECKLIST/ASSET/HOST_FQDN", document, XPathConstants.NODE);
-			//Node techArea = (Node) xpath.evaluate("CHECKLIST/ASSET/TECH_AREA", document, XPathConstants.NODE);
+    	    NodeList assetNodeList = document.getElementsByTagName("ASSET");
+    	    Node assetNode = assetNodeList.item(0);
+    	    String hostNameNode = (String) xpath.evaluate("HOST_NAME/text()", assetNode, XPathConstants.STRING);
+			//Node hostIPNode = (Node) xpath.evaluate("HOST_IP/text()", assetNode, XPathConstants.STRING);
+			//Node hostMACNode = (Node) xpath.evaluate("HOST_MAC/text()", assetNode, XPathConstants.STRING);
+			//Node hostFQDNNode = (Node) xpath.evaluate("HOST_FQDN/text()", assetNode, XPathConstants.STRING);
+			//Node techArea = (Node) xpath.evaluate("TECH_AREA/text()", assetNode, XPathConstants.STRING);
 			//Node STIGNameNode = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/STIG_INFO/SI_DATA[8]/SID_DATA", document, XPathConstants.NODE);
 			//Node STIGVerNode = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/STIG_INFO/SI_DATA[7]/SID_DATA", document, XPathConstants.NODE);
-			Node STIGNameNode = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[1]/STIG_DATA[22]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
+			String STIGNameNode = (String) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[1]/STIG_DATA[22]/ATTRIBUTE_DATA", document, XPathConstants.STRING);
 			//in the ckl in the vuln node, they have this again, but you save processing time by doing it here
 
 			//get vuln information and loop thru it 
-			NodeList nl = document.getElementsByTagName("VULN"); //don't change this, going to * or what ever won't get the right number to loop
-	    	for (int cnt = 1; cnt <= nl.getLength(); cnt++) {
-	    		Node vulnStatus = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STATUS", document, XPathConstants.NODE);  	
+			NodeList vulnNodeList = document.getElementsByTagName("VULN"); //don't change this, going to * or what ever won't get the right number to loop
+	    	for (int cnt = 0; cnt < vulnNodeList.getLength(); cnt++) {
+	    		Node vulnNode = vulnNodeList.item(cnt);
+	    		String vulnStatus = (String) xpath.evaluate("STATUS/text()", vulnNode, XPathConstants.STRING);  	
 	    		
-	    		if (vulnStatus.getTextContent().equals("Open")){
-	    		
-					Node vulnNumber = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[1]/ATTRIBUTE_DATA", document, XPathConstants.NODE); //this gets the V id				
-					Node vulnSTIGID = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[5]/ATTRIBUTE_DATA", document, XPathConstants.NODE); // this gets the SV number										
-					Node vulnSeverity = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[2]/ATTRIBUTE_DATA", document, XPathConstants.NODE);									
-					Node vulnRuleTitle = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[6]/ATTRIBUTE_DATA", document, XPathConstants.NODE);										
-					Node vulnDiscussion = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[7]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
-					Node vulnIAControl = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[8]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
-					Node vulnCheckContent = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[9]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
-					Node vulnFixText = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[10]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
-					Node vulnFindingDetails = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/FINDING_DETAILS", document, XPathConstants.NODE);
-					//Node vulnFindingComments = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/COMMENTS", document, XPathConstants.NODE);
-					Node vulnCCI = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[24]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
-					//Node vulFix = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[24]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
+	    		if (vulnStatus.equalsIgnoreCase("Open")){
+
+	    			//CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/
+	    			String vulnID = (String) xpath.evaluate("STIG_DATA[1]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING); //this gets the V id				
+	    			String stigID = (String) xpath.evaluate("STIG_DATA[5]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING); // this gets the SV number										
+	    			String catNum = (String) xpath.evaluate("STIG_DATA[2]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);
+	    			catNum = returnCAT(catNum);
+	    			String ruleTitle = (String) xpath.evaluate("STIG_DATA[6]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);										
+	    			String discussion = (String) xpath.evaluate("STIG_DATA[7]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);
+	    			String iac = (String) xpath.evaluate("STIG_DATA[8]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);
+	    			String checkContent = (String) xpath.evaluate("STIG_DATA[9]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);
+	    			String fixText = (String) xpath.evaluate("ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);
+	    			String cleanComment = (String) xpath.evaluate("FINDING_DETAILS", vulnNode, XPathConstants.STRING);
+	    			cleanComment = cleanComment.replace(split, " ");
+	    			//Node vulnFindingComments = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/COMMENTS", document, XPathConstants.NODE);
+	    			String cci = (String) xpath.evaluate("STIG_DATA[24]/ATTRIBUTE_DATA", vulnNode, XPathConstants.STRING);
+					//Node vulFixText = (Node) xpath.evaluate("CHECKLIST/STIGS/iSTIG/VULN[" + cnt +"]/STIG_DATA[24]/ATTRIBUTE_DATA", document, XPathConstants.NODE);
 					
 					fe = new FindingEntry();
-					String checkContent = vulnCheckContent.getTextContent();
-					String fixText = vulnFixText.getTextContent();
-					String catNum = returnCAT(vulnSeverity.getTextContent());
-					String cleanComment = vulnFindingDetails.getTextContent();
-					cleanComment = cleanComment.replace(split, " ");
-					String iac = vulnIAControl.getTextContent().trim();
-				
-					fe.setFindingID(vulnNumber.getTextContent() + " : " + vulnSTIGID.getTextContent());
-					fe.setFindingSource(STIGNameNode.getTextContent());
+					fe.setFindingID(vulnID + " : " + stigID);//.getTextContent()
+					fe.setFindingSource(STIGNameNode);  //.getTextContent()
 					fe.setCat(catNum);
 					fe.setLevel(catNum);
-					fe.setDescription(vulnRuleTitle.getTextContent() + newline + vulnDiscussion.getTextContent());		
+					fe.setDescription(ruleTitle + newline + discussion);		//.getTextContent()
 					fe.setFindingDetail(cleanComment);
 					fe.setCheckContent(checkContent);
 					fe.setFixText(fixText);
 					
 					if(hostNameNode != null){
-						String hnn = hostNameNode.getTextContent();
+						String hnn = hostNameNode;  //.getTextContent();
 						fe.setSystemName(hnn);
 					} else {
 						JOptionPane.showMessageDialog(this, "INPUT FILE ERROR, Missing Host information" + newline + "DO NOT TRUST RESULTS", "CKL ERROR", JOptionPane.ERROR_MESSAGE);
@@ -574,7 +682,7 @@ public class POAMbuilder extends JPanel
 					
 					if (iac.equals("")){
 						//pe.setControl("ERROR ECSC-1" + newline + "CM-6");
-						String cci = vulnCCI.getTextContent();
+						//String cci = vulnCCI;  //.getTextContent();
 						String rmf = cciToRmf.get(cci);
 						fe.setControl(rmf);
 					} else {
@@ -588,13 +696,13 @@ public class POAMbuilder extends JPanel
 					fe.setScheduledcompletiondate(returnDate(catNum));
 					
 					 // feed poamEntry in array
-					String key = vulnNumber.getTextContent() + STIGNameNode.getTextContent(); //id + stig allows me to fold the duplicates in faster and more effiecntly
+					String key = vulnID + STIGNameNode; //.getTextContent()id + stig allows me to fold the duplicates in faster and more effiecntly
 					
 					if(entryMap.get(key) == null){ // && entryMap.get(key).equals("")
 						entryMap.put(key, fe);
 					} else {
 						FindingEntry dupePE = entryMap.get(key);
-						dupePE.setSystemName(dupePE.getSystemName() + newline + hostNameNode.getTextContent());
+						dupePE.setSystemName(dupePE.getSystemName() + newline + hostNameNode);  //.getTextContent()
 						entryMap.remove(key);
 						entryMap.put(key, dupePE);
 					}//if(entryMap.get(key) == null){
@@ -634,6 +742,8 @@ public class POAMbuilder extends JPanel
 			monthMap.put("12", "JAN");
 			monthMap.put("13", "FEB");
 			monthMap.put("14", "MAR");
+			monthMap.put("15", "APR");
+			monthMap.put("16", "MAY");
 			
 			//datePicker is a global var, user selected
 			//if datePicker is null it's set to todays date,
@@ -681,7 +791,7 @@ public class POAMbuilder extends JPanel
      * */ 
     public static boolean stringContainsItemFromList(String inputString, String[] firstLine){
         for(int i =0; i < firstLine.length; i++){
-            if(inputString.equals(firstLine[i])){
+            if(inputString.equalsIgnoreCase(firstLine[i])){
                 return true;
             }
         }
@@ -760,7 +870,7 @@ public class POAMbuilder extends JPanel
 
 				if(!cat.equals("Info") ){  //don't run the ACAS Detailed Vulnerability Export unless you have info filtered out!
 					fe = new FindingEntry();
-					
+
 					//String pluginName = nextLine[columnLocations[0]];
 					String synopis = nextLine[columnLocations[1]];
 					String severity = nextLine[columnLocations[2]];
@@ -780,7 +890,7 @@ public class POAMbuilder extends JPanel
 
 					fe.setFindingID(pluginID);
 					fe.setFindingSource("ACAS - Nessus Scanner");
-					fe.setDescription(synopis + newline +description); //
+					fe.setDescription(synopis + newline + description); //
 					fe.setControl("VIVM-1" + newline + "CM-6"); 
 					fe.setCheckContent("");
 					fe.setFixText(solution.replace(split, " "));
@@ -854,7 +964,7 @@ public class POAMbuilder extends JPanel
 					break;
 				}
 			
-				if(nextLine[columnLocations[7]].equals("Open") ){ 
+				if(nextLine[columnLocations[7]].equalsIgnoreCase("Open") ){ 
 					fe = new FindingEntry();
 					
 					String iac = "";
@@ -867,7 +977,7 @@ public class POAMbuilder extends JPanel
 						//int chk = charSqCnt(cci, "CCI");
 						String[] cciArr = cci.split("CCI-");
 						String rmf = "";
-						for(int c=0; c<cciArr.length; c++){
+						for(int c=0; c < cciArr.length; c++){
 							String[] rmfcon = cciArr[c].split(" :: ");
 							if(!rmfcon[rmfcon.length-1].trim().equals("") && rmf.trim().equals("")){
 								rmf = rmfcon[rmfcon.length-1].trim();
@@ -945,7 +1055,7 @@ public class POAMbuilder extends JPanel
 		    		fe.setFixText("");//no fix  text in STIG CSVs
 		    		
 				    // feed poamEntry in array
-					String key = nextLine[columnLocations[4]]+stigName; //id + stig allows me to fold the duplicates in faster and more effiecntly
+					String key = nextLine[columnLocations[4]] + stigName; //id + stig allows me to fold the duplicates in faster and more effiecntly
 					
 					if(entryMap.get(key) == null){ // && entryMap.get(key).equals("")
 						entryMap.put(key, fe);
@@ -969,160 +1079,7 @@ public class POAMbuilder extends JPanel
 			e.printStackTrace();
 		}
     }//private void scapEntry(CSVReader reader, String systemName){
-  
-    public class poamCounts {
-    	private String poamName;
-    	private int cat1;
-    	private int cat2;
-    	private int cat3;
-    	private int ovrcat1;
-    	private int ovrcat2;
-    	private int ovrcat3;
-		public int getOvrcat1() {
-			return ovrcat1;
-		}
-		public void setOvrcat1(int ovrcat1) {
-			this.ovrcat1 = ovrcat1;
-		}
-		public int getOvrcat2() {
-			return ovrcat2;
-		}
-		public void setOvrcat2(int ovrcat2) {
-			this.ovrcat2 = ovrcat2;
-		}
-		public int getOvrcat3() {
-			return ovrcat3;
-		}
-		public void setOvrcat3(int ovrcat3) {
-			this.ovrcat3 = ovrcat3;
-		}
-		public String getPoamName() {
-			return poamName;
-		}
-		public void setPoamName(String poamName) {
-			this.poamName = poamName;
-		}
-		public int getCat1() {
-			return cat1;
-		}
-		public void setCat1(int cat1) {
-			this.cat1 = cat1;
-		}
-		public int getCat2() {
-			return cat2;
-		}
-		public void setCat2(int cat2) {
-			this.cat2 = cat2;
-		}
-		public int getCat3() {
-			return cat3;
-		}
-		public void setCat3(int cat3) {
-			this.cat3 = cat3;
-		}
-    }
-    
-    /**
-     * POAMEntry Java Object
-     * This object contain singular lines of the poam, you'll need to set each of the vars for a complete entry
-     *  @var title;	description;cat;iac;poc;resourcesrequired;	scheduledcompletiondate;status;	findingSource;findingID;comment;systemName;
-     *  
-     *  
-     * */
-   
-    public class FindingEntry {
-    	private String findingID;
-    	private String description;
-    	private String control;
-    	private String cat;
-    	private String level;
-    	private String scheduledcompletiondate;
-    	private String findingSource;
-    	private String comment;
-    	private String systemName;
-    	private String findingDetail;
-    	private String fixText;
-    	private String checkContent;
-	
-		public String getCheckContent() {
-			return checkContent;
-		}
-		public void setCheckContent(String checkContent) {
-			this.checkContent = checkContent;
-		}
-		public String getDescription() {
-			return description;
-		}
-		public void setDescription(String description) {
-			this.description = description;
-		}	
-		public String getLevel() {
-			return level;
-		}
-		public void setLevel(String level) {
-			this.level = level;
-		}
-		public String getCat() {
-			return cat;
-		}
-		public void setCat(String cat) {
-			this.cat = cat;
-		}
-		public String getControl() {
-			return control;
-		}
-		public void setControl(String iac) {
-			this.control = iac;
-		}
-		public String getPoc() {
-			return poc;
-		}	
-		public String getScheduledcompletiondate() {
-			return scheduledcompletiondate;
-		}	
-		public void setScheduledcompletiondate(String scheduledcompletiondate) {
-			this.scheduledcompletiondate = scheduledcompletiondate;
-		}
-		public String getFindingSource() {
-			return findingSource;
-		}
-		public void setFindingSource(String findingSource) {
-			this.findingSource = findingSource;
-		}
-		public String getFindingID() {
-			return findingID;
-		}
-		public void setFindingID(String findingID) {
-			this.findingID = findingID;
-		}
-		public String getComment() {
-			return comment;
-		}
-		public void setComment(String comment) {
-			this.comment = comment;
-		}
-		public String getSystemName() {
-			return systemName;
-		}
-		public void setSystemName(String systemName) {
-			this.systemName = systemName;
-		}
-		public String getFindingDetail() {
-			return findingDetail;
-		}
-		public void setFindingDetail(String findingDetail) {
-			this.findingDetail = findingDetail;
-		}
-		public String getFixText() {
-			return fixText;
-		}
-		public void setFixText(String fixText) {
-			this.fixText = fixText;
-		}    		
-    }
-    
-    
-    
+      
     /**
      * shortSTIGName
      * @param stig
@@ -1157,15 +1114,21 @@ public class POAMbuilder extends JPanel
     * returnCAT
     * @param cat
     * @return  I  or   II   or   I I  I
-    * Takes  a  Critical/High/Medium/Low  and translates  it  to the I's  II's and  I I I ' s
+    * Takes  a  Critical/High/Medium/Low 4/3/2/1  and translates  it  to the I's  II's and  III ' s
     */
     private String returnCAT(String cat ){ 
     	cat = cat.toLowerCase();
-    	if (cat.equals("high") || cat.equals("critical") ){
+    	if (cat.equalsIgnoreCase("high") || cat.equalsIgnoreCase("critical") ){
     		return "I";
-    	} else if (cat.equals("medium")){
+    	} else if (cat.equalsIgnoreCase("medium")){
     		return "II";
-    	} else if (cat.equals("low")){		
+    	} else if (cat.equalsIgnoreCase("low")){		
+    		return "III";
+    	} else if (cat.equalsIgnoreCase("4") || cat.equalsIgnoreCase("3") ){ 
+    		return "I";	
+    	} else if (cat.equalsIgnoreCase("2")){
+    		return "II";
+    	} else if (cat.equalsIgnoreCase("1")){		
     		return "III";
     	} else {
     		return "CAT NOT FOUND";
@@ -1178,7 +1141,7 @@ public class POAMbuilder extends JPanel
 	* @param findStr - squence to find
 	* @return int - count of number of times found
 	*/
-	private int charSqCnt(String str, String findStr){ 
+	/*private int charSqCnt(String str, String findStr){ 
 		int lastlndex = 0;
 		int cnt = 0;
 
@@ -1191,7 +1154,7 @@ public class POAMbuilder extends JPanel
 		}
 		return cnt;
 	}//end charSqCnt
-	
+	*/
 	/**
 	* returnDate
 	* @param  cat
@@ -1200,11 +1163,11 @@ public class POAMbuilder extends JPanel
 	* Given CAT level, returns date	
 	*/
 	private String returnDate(String cat){
-		if (cat.equals("high") || cat.equals("critical") || cat.equals("I")){
+		if (cat.equalsIgnoreCase("high") || cat.equalsIgnoreCase("critical") || cat.equalsIgnoreCase("I")){
 			return cat1scheduledcompletiondate;
-    	} else if (cat.equals("medium") || cat.equals("II")){
+    	} else if (cat.equalsIgnoreCase("medium") || cat.equalsIgnoreCase("II")){
     		return cat2scheduledcompletiondate;
-    	} else if (cat.equals("low") || cat.equals("III")){		
+    	} else if (cat.equalsIgnoreCase("low") || cat.equalsIgnoreCase("III")){		
     		return cat3scheduledcompletiondate;
     	} else {
     		return cat3scheduledcompletiondate;
