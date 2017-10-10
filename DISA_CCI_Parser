@@ -1,0 +1,51 @@
+package com.bangblue;
+
+import java.io.File;
+import java.io.PrintWriter;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+
+import org.w3c.dom.Attr;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+
+public class CCIParser {
+	public static void main(String[] args) {
+		try {
+			
+			File file = new File("C:\\Users\\steven.rogers\\Desktop\\U_CCI_List.xml");
+			DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+		    DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+		    Document document = docBuilder.parse(file);
+		    
+		    PrintWriter writer = new PrintWriter("ccitormf.txt", "UTF-8");
+		    
+		    XPath xpath = XPathFactory.newInstance().newXPath();
+    		
+		    NodeList cciItemNodeList = document.getElementsByTagName("cci_item");
+		    		    
+		    for (int cnt = 0; cnt < cciItemNodeList.getLength(); cnt++) { 
+		    	Node cciItemNode = cciItemNodeList.item(cnt);
+		    	NamedNodeMap attr = cciItemNode.getAttributes();
+		    	Attr attribute = (Attr)attr.item(0);
+		    	String cciNumber = attribute.getValue();
+		       	String rmfControl = (String) xpath.evaluate("references/reference[@version=\"4\"]/@index", cciItemNode, XPathConstants.STRING);
+		       	String output = "cciToRmf.put(\"" + cciNumber + "\", \"" + rmfControl + "\");";
+		       	System.out.println(output);
+				writer.println(output);
+		    }//for
+    		
+		    writer.close();
+		    
+		} catch (Exception e){
+			e.printStackTrace();
+		}//try
+	}//main
+}
