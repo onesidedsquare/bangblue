@@ -587,12 +587,7 @@ public class POAMBuilder extends JPanel
 		}
     	java.lang.System.exit(2);
     } // end SCAPParser
-    /**
-     * This parses the ####.nessus files that ACAS produces post scan
-     * 
-     * 
-     * @param document
-     */
+
  
 /**
  * This parses STIG viewers CKLs
@@ -1031,7 +1026,13 @@ public class POAMBuilder extends JPanel
 		}
     	System.gc();
     }//private void scapEntry(CSVReader reader, String systemName){
-         
+   
+   /**
+     * This parses the ####.nessus files that ACAS produces post scan
+     * 
+     * 
+     * @param document
+     */
     private void nessusParser(Document document) {
     	FindingEntry fe = new FindingEntry();
     	try {
@@ -1125,7 +1126,5 @@ public class POAMBuilder extends JPanel
     		
 		}
     }//nessusParser
-
-
 
 }//end class body
