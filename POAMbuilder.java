@@ -544,13 +544,13 @@ public class POAMBuilder extends JPanel
 	    				
 	    				if(cat.equalsIgnoreCase("I")) {
 	    					int c = counts.gettotalCAT1();
-		    				counts.settotalCAT1(c++);
+		    				counts.settotalCAT1(c+1);
 		    			}else if(cat.equalsIgnoreCase("II")) {
 		    				int c = counts.gettotalCAT2();
-		    				counts.settotalCAT2(c++);
+		    				counts.settotalCAT2(c+1);
 		    			} else if(cat.equalsIgnoreCase("III")) {
 		    				int c = counts.gettotalCAT3();
-		    				counts.settotalCAT3(c++);
+		    				counts.settotalCAT3(c+1);
 		    			}
 	    				fc.remove(sourcename);
 	    				fc.put(sourcename, counts);
